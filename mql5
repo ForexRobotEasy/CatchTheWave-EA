@@ -1,0 +1,89 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                              CatchTheWave EA.mq5 |
+//|                         https://www.forexroboteasy.com             |
+//|                                             Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+// Define input parameters
+input int TakeProfit = 100;  // Take profit value
+input int StopLoss = 50;     // Stop loss value
+input double LotSize = 0.01; // Lot size for trading
+input int GridSize = 20;     // Grid size for grid trading
+
+// Define global variables
+int totalOrders = 0;        // Total number of orders opened
+int lastOrderTicket = -1;   // Ticket number of the last opened order
+
+//+------------------------------------------------------------------+
+//| Expert Advisor initialization function                              |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   // Allow automated trading
+   TradingMode(TRADE_MODE_FULLAUTOMATIC);
+
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert Advisor start function                                      |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Check if there are open positions
+   if(OrdersTotal() > 0)
+   {
+      // Loop through all open orders
+      for(int i = 0; i < OrdersTotal(); i++)
+      {
+         // Get order information
+         if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES))
+         {
+            // Close order if it reaches take profit or stop loss
+            if(OrderProfit() >= TakeProfit || OrderProfit() <= -StopLoss)
+            {
+               OrderClose(OrderTicket(), OrderLots(), MarketInfo(OrderSymbol(), MODE_BID), 0);
+               totalOrders--;
+            }
+         }
+      }
+   }
+   else
+   {
+      // Determine entry points based on technical indicators and market analysis
+      double entryPrice = iMA(NULL, 0, 14, 0, MODE_SMA, PRICE_CLOSE, 0); // Example indicator: Simple Moving Average
+
+      // Open grid orders
+      for(int i = 1; i <= GridSize; i++)
+      {
+         double price = entryPrice + (i * MarketInfo(OrderSymbol(), MODE_POINT));
+
+         // Open buy order
+         int ticket = OrderSend(OrderSymbol(), OP_BUY, LotSize, price, 0, price - StopLoss * MarketInfo(OrderSymbol(), MODE_POINT), price + TakeProfit * MarketInfo(OrderSymbol(), MODE_POINT), 'CatchTheWave EA', 0, 0, clrBlue);
+         if(ticket > 0)
+         {
+            totalOrders++;
+            lastOrderTicket = ticket;
+         }
+
+         // Open sell order
+         ticket = OrderSend(OrderSymbol(), OP_SELL, LotSize, price, 0, price + StopLoss * MarketInfo(OrderSymbol(), MODE_POINT), price - TakeProfit * MarketInfo(OrderSymbol(), MODE_POINT), 'CatchTheWave EA', 0, 0, clrRed);
+         if(ticket > 0)
+         {
+            totalOrders++;
+            lastOrderTicket = ticket;
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Expert Advisor deinitialization function                          |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   // Print total number of orders opened
+   Print('Total orders opened: ', totalOrders);
+   Print('Last order ticket: ', lastOrderTicket);
+}
